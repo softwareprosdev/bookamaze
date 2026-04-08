@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb } from '~/db'
 import { users } from '~/db/schema'
@@ -19,7 +18,7 @@ export const Route = createAPIFileRoute('/api/auth/login')({
         )
       }
 
-      const db = getDb()
+      const db = await getDb()
       
       // Find user
       const user = db.select().from(users).where(eq(users.email, email.toLowerCase())).get()

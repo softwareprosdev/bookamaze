@@ -1,6 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createAPIFileRoute } from '@tanstack/react-start/server'
-import { getDb } from '~/db'
+import { getDb, saveDb } from '~/db'
 import { users } from '~/db/schema'
 import { eq } from 'drizzle-orm'
 import { hashPassword } from '~/lib/password'
@@ -27,9 +26,8 @@ export const Route = createAPIFileRoute('/api/auth/register')({
         )
       }
 
-      const db = getDb()
+      const db = await getDb()
       
-      // Check if user exists
       const existing = db.select().from(users).where(eq(users.email, email.toLowerCase())).get()
       if (existing) {
         return new Response(
@@ -38,7 +36,6 @@ export const Route = createAPIFileRoute('/api/auth/register')({
         )
       }
 
-      // Create user
       const passwordHash = await hashPassword(password)
       const userId = randomUUID()
       
@@ -49,8 +46,9 @@ export const Route = createAPIFileRoute('/api/auth/register')({
         displayName: displayName || email.split('@')[0],
         createdAt: new Date(),
       }).run()
+      
+      saveDb()
 
-      // Create session
       const token = await signJWT({ userId, email: email.toLowerCase() })
       const cookieOptions = getSessionCookieOptions()
       const cookie = createCookieHeader({ ...cookieOptions, value: token })
