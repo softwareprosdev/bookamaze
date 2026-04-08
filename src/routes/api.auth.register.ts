@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb, saveDb } from '~/db'
 import { hashPassword } from '~/lib/password'
