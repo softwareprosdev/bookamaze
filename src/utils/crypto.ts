@@ -1,9 +1,7 @@
 import crypto from 'crypto'
+import { serverConfig } from '~/config'
 
-const ENCRYPTION_KEY = process.env.TOKEN_ENCRYPTION_KEY || ''
-if (ENCRYPTION_KEY.length !== 32) {
-  throw new Error('TOKEN_ENCRYPTION_KEY must be exactly 32 bytes')
-}
+const ENCRYPTION_KEY = serverConfig.TOKEN_ENCRYPTION_KEY
 
 export function encryptToken(token: string): string {
   const iv = crypto.randomBytes(16)

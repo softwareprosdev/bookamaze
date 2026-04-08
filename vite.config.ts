@@ -4,12 +4,13 @@ import viteReact from '@vitejs/plugin-react'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
-import neon from './neon-vite-plugin'
 import sentryPlugin from './src/integrations/sentry/vite-plugin'
 import paraglide from './paraglide-vite-plugin'
 
-export default defineConfig({
-  plugins: [
+const isDev = process.env.NODE_ENV !== 'production'
+
+async function getPlugins() {
+  const plugins = [
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
@@ -17,9 +18,29 @@ export default defineConfig({
     tanstackStart(),
     viteReact(),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
-    neon(),
     sentryPlugin(),
     paraglide(),
+  ]
+
+  if (isDev) {
+    try {
+      const { neon } = await import('vite-plugin-neon-new')
+      plugins.push(
+        neon({
+          seedFile: 'db/init.sql',
+          envKey: 'DATABASE_URL',
+        })
+      )
+    } catch (e) {
+      console.warn('vite-plugin-neon-new not available, skipping DB plugin')
+    }
+  }
+
+  return plugins
+}
+
+export default defineConfig(async () => ({
+  plugins: [...(await getPlugins()),
     // Exclude demo routes in production
     {
       name: 'exclude-demo-routes',
@@ -32,4 +53,4 @@ export default defineConfig({
       },
     },
   ],
-})
+}))

@@ -1,8 +1,10 @@
-import { postgres } from 'vite-plugin-db'
+import { neon } from 'vite-plugin-neon-new'
 
 export default function () {
-  return postgres({
+  return neon({
     seedFile: 'db/init.sql',
     envKey: 'DATABASE_URL',
   })
 }
+
+export const isNeonPluginAvailable = true
