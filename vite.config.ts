@@ -14,7 +14,7 @@ async function getPlugins() {
       projects: ['./tsconfig.json'],
     }),
     tailwindcss(),
-    tanstackStart({ ssr: false }),
+    tanstackStart(),
     viteReact(),
     sentryPlugin(),
     paraglide(),
