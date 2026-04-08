@@ -2,11 +2,8 @@ import React from 'react'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import appCss from '../styles.css?url'
-import { Header } from '../components/Header'
-import { WorkOSProvider } from '../integrations/workos/provider'
 import { QueryProvider } from '../integrations/query/provider'
 import { queryDevtoolsPlugin } from '../integrations/query/devtools'
-import { SentryErrorBoundary } from '../components/ErrorBoundary'
 
 const devtoolsPlugins = [
   queryDevtoolsPlugin,
@@ -17,11 +14,11 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'TanStack Start Starter' },
+      { title: 'Book Amaze' },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  shellComponent: RootDocument,
+  component: RootDocument,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
@@ -31,18 +28,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <SentryErrorBoundary>
-          <WorkOSProvider>
-            <QueryProvider>
-              <Header />
-              {children}
-              <TanStackRouterDevtools />
-              {devtoolsPlugins.map((plugin, i) => (
-                <React.Fragment key={i}>{plugin.render}</React.Fragment>
-              ))}
-            </QueryProvider>
-          </WorkOSProvider>
-        </SentryErrorBoundary>
+        <QueryProvider>
+          {children}
+          <TanStackRouterDevtools />
+          {devtoolsPlugins.map((plugin, i) => (
+            <React.Fragment key={i}>{plugin.render}</React.Fragment>
+          ))}
+        </QueryProvider>
         <Scripts />
       </body>
     </html>
