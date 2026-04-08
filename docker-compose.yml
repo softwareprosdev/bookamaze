@@ -21,6 +21,7 @@ services:
       DATABASE_URL: postgresql://bookamaze:password@db:5432/bookamaze
       VITE_APP_URL: http://localhost:3000
       NODE_ENV: development
+      CI: "true"
     ports:
       - '3000:3000'
     volumes:
