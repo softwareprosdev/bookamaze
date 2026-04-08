@@ -2,6 +2,7 @@ import { db } from '~/db'
 import { cloudConnections } from '~/db/schema'
 import { eq } from 'drizzle-orm'
 import { refreshGoogleToken } from './google-drive'
+import { encryptToken, decryptToken } from '~/utils/crypto'
 
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -37,16 +38,29 @@ export async function getValidAccessToken(
 
   if (needsRefresh && connection.refreshToken) {
     try {
+      // Decrypt refresh token for use
+      const decryptedRefreshToken = connection.refreshTokenEncrypted 
+        ? decryptToken(connection.refreshTokenEncrypted)
+        : connection.refreshToken
+
+      if (!decryptedRefreshToken) {
+        throw new Error('No refresh token available')
+      }
+
       const newTokens = await refreshTokenForProvider(
         connection.provider,
-        connection.refreshToken
+        decryptedRefreshToken
       )
+
+      // Encrypt new tokens before storing
+      const encryptedAccessToken = encryptToken(newTokens.accessToken)
 
       // Update tokens in database
       await db
         .update(cloudConnections)
         .set({
-          accessToken: newTokens.accessToken,
+          accessToken: newTokens.accessToken, // Keep plaintext for backward compatibility
+          accessTokenEncrypted: encryptedAccessToken,
           tokenExpiresAt: newTokens.expiresAt,
           updatedAt: new Date(),
         })
@@ -68,7 +82,12 @@ export async function getValidAccessToken(
     }
   }
 
-  return connection.accessToken
+  // Return decrypted access token
+  const accessToken = connection.accessTokenEncrypted 
+    ? decryptToken(connection.accessTokenEncrypted)
+    : connection.accessToken
+
+  return accessToken
 }
 
 async function refreshTokenForProvider(

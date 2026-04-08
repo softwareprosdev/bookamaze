@@ -20,5 +20,16 @@ export default defineConfig({
     neon(),
     sentryPlugin(),
     paraglide(),
+    // Exclude demo routes in production
+    {
+      name: 'exclude-demo-routes',
+      resolveId(id) {
+        const normalizedId = id?.replace(/\\/g, '/')
+
+        if (normalizedId?.includes('/routes/demo/') && process.env.NODE_ENV === 'production') {
+          return { id: '', external: true }
+        }
+      },
+    },
   ],
 })

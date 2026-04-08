@@ -2,12 +2,14 @@ import { initTRPC, TRPCError } from '@trpc/server'
 import superjson from 'superjson'
 import { z } from 'zod'
 import { db } from '~/db'
+import { serverConfig } from '~/config'
 import {
   users,
   cloudConnections,
   books,
   readingProgress,
   bookmarks,
+  sharedBooks,
 } from '~/db/schema'
 import { eq, desc, asc, and, ilike, count, sql } from 'drizzle-orm'
 
@@ -156,23 +158,101 @@ const booksRouter = router({
       return book
     }),
 
-  delete: protectedProcedure
-    .input(z.object({ bookId: z.string().uuid() }))
+  importFromUrl: protectedProcedure
+    .input(
+      z.object({
+        url: z.string().url(),
+        title: z.string().min(1),
+        cloudConnectionId: z.string().uuid(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const book = await db.query.books.findFirst({
-        where: and(eq(books.id, input.bookId), eq(books.userId, ctx.user.id)),
+      // Import the validateAndDownloadPDF function
+      const { validateAndDownloadPDF } = await import('~/utils/url-validation')
+      
+      // Download and validate the PDF
+      const { buffer, size } = await validateAndDownloadPDF(input.url)
+
+      // Get cloud connection and access token
+      const connection = await db.query.cloudConnections.findFirst({
+        where: and(
+          eq(cloudConnections.id, input.cloudConnectionId),
+          eq(cloudConnections.userId, ctx.user.id)
+        ),
       })
 
-      if (!book) {
+      if (!connection || !connection.isActive || !connection.rootFolderId) {
         throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Book not found',
+          code: 'BAD_REQUEST',
+          message: 'Invalid or inactive cloud connection',
         })
       }
 
-      await db.delete(books).where(eq(books.id, input.bookId))
+      // Get valid access token
+      const { getValidAccessToken } = await import('~/integrations/cloud/token-manager')
+      const accessToken = await getValidAccessToken(input.cloudConnectionId)
 
-      return { success: true }
+      // Upload to cloud storage
+      let cloudFileId: string
+      let cloudFilePath: string
+
+      if (connection.provider === 'google_drive') {
+        const { uploadToGoogleDrive } = await import('~/integrations/cloud/google-drive')
+        const result = await uploadToGoogleDrive(
+          accessToken,
+          connection.rootFolderId,
+          buffer,
+          `${input.title}.pdf`
+        )
+        cloudFileId = result.id
+        cloudFilePath = result.webViewLink
+      } else {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Unsupported cloud provider',
+        })
+      }
+
+      // Create book record
+      const [book] = await db
+        .insert(books)
+        .values({
+          userId: ctx.user.id,
+          title: input.title,
+          source: 'url',
+          sourceUrl: input.url,
+          cloudConnectionId: input.cloudConnectionId,
+          cloudFileId,
+          cloudFilePath,
+          fileSizeBytes: size,
+        })
+        .returning()
+
+      return book
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ bookId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      // Single atomic operation with authorization check
+      const deleted = await db
+        .delete(books)
+        .where(
+          and(
+            eq(books.id, input.bookId),
+            eq(books.userId, ctx.user.id)  // Include in delete condition!
+          )
+        )
+        .returning()
+
+      if (deleted.length === 0) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Book not found or access denied',
+        })
+      }
+
+      return { success: true, deletedCount: deleted.length }
     }),
 
   updateProgress: protectedProcedure
@@ -279,6 +359,108 @@ const booksRouter = router({
         orderBy: asc(bookmarks.page),
       })
     }),
+
+  // Book sharing procedures
+  shareBook: protectedProcedure
+    .input(
+      z.object({
+        bookId: z.string().uuid(),
+        sharedWithUserId: z.string().uuid(),
+        permissions: z
+          .object({
+            canRead: z.boolean().default(true),
+            canDownload: z.boolean().default(false),
+          })
+          .default({ canRead: true, canDownload: false }),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify the user owns the book
+      const book = await db.query.books.findFirst({
+        where: and(
+          eq(books.id, input.bookId),
+          eq(books.userId, ctx.user.id)
+        ),
+      })
+
+      if (!book) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Book not found or access denied',
+        })
+      }
+
+      // Verify the recipient user exists
+      const recipientUser = await db.query.users.findFirst({
+        where: eq(users.id, input.sharedWithUserId),
+      })
+
+      if (!recipientUser) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Recipient user not found',
+        })
+      }
+
+      // Check if already shared
+      const existingShare = await db.query.sharedBooks.findFirst({
+        where: and(
+          eq(sharedBooks.bookId, input.bookId),
+          eq(sharedBooks.sharedByUserId, ctx.user.id),
+          eq(sharedBooks.sharedWithUserId, input.sharedWithUserId)
+        ),
+      })
+
+      if (existingShare) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Book already shared with this user',
+        })
+      }
+
+      const [sharedBook] = await db
+        .insert(sharedBooks)
+        .values({
+          bookId: input.bookId,
+          sharedByUserId: ctx.user.id,
+          sharedWithUserId: input.sharedWithUserId,
+          permissions: input.permissions,
+        })
+        .returning()
+
+      return sharedBook
+    }),
+
+  getSharedBooks: protectedProcedure.query(async ({ ctx }) => {
+    return db.query.sharedBooks.findMany({
+      where: eq(sharedBooks.sharedByUserId, ctx.user.id),
+      with: {
+        book: true,
+        sharedWithUser: true,
+      },
+      orderBy: desc(sharedBooks.createdAt),
+    })
+  }),
+
+  getSharedWithMe: protectedProcedure
+    .query(async ({ ctx }) => {
+      return db.query.sharedBooks.findMany({
+        where: eq(sharedBooks.sharedWithUserId, ctx.user.id),
+        with: {
+          book: {
+            with: {
+              readingProgress: true,
+            },
+          },
+          sharedByUser: {
+            columns: {
+              displayName: true,
+              email: true,
+            },
+          },
+        },
+      })
+    }),
 })
 
 // Storage router
@@ -305,14 +487,14 @@ const storageRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const baseUrl = process.env.VITE_APP_URL ?? 'http://localhost:3000'
+      const baseUrl = serverConfig.VITE_APP_URL
       const state = Buffer.from(
         JSON.stringify({ userId: ctx.user.id, provider: input.provider })
       ).toString('base64')
 
       if (input.provider === 'google_drive') {
         const params = new URLSearchParams({
-          client_id: process.env.GOOGLE_CLIENT_ID!,
+          client_id: serverConfig.GOOGLE_CLIENT_ID,
           redirect_uri: `${baseUrl}/api/oauth/google/callback`,
           response_type: 'code',
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
@@ -325,7 +507,7 @@ const storageRouter = router({
         }
       } else {
         const params = new URLSearchParams({
-          client_id: process.env.DROPBOX_APP_KEY!,
+          client_id: serverConfig.DROPBOX_APP_KEY,
           redirect_uri: `${baseUrl}/api/oauth/dropbox/callback`,
           response_type: 'code',
           token_access_type: 'offline',

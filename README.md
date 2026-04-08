@@ -90,6 +90,23 @@ The app will be available at `http://localhost:3000`
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Yes |
 | `DROPBOX_APP_KEY` | Dropbox OAuth app key | Yes |
 | `DROPBOX_APP_SECRET` | Dropbox OAuth app secret | Yes |
+| `SENTRY_DSN` | Optional Sentry DSN for error tracking | No |
+
+## Local Docker Development
+
+A Docker development setup is included for local testing.
+
+1. Create a local environment file from the example:
+```bash
+cp .env.example .env.local
+```
+2. Update `.env.local` with your credentials and `DATABASE_URL`.
+3. Start the app and a local PostgreSQL database:
+```bash
+docker compose up --build
+```
+
+The app will be available at `http://localhost:3000`.
 
 ## Setting Up OAuth
 
@@ -132,6 +149,20 @@ The app can be deployed on Coolify or any Docker-compatible platform. Use the No
 - Build command: `pnpm build`
 - Start command: `pnpm start`
 - Port: `3000`
+
+### Docker Build
+
+A production container can be built using the included `Dockerfile`:
+
+```bash
+docker build -t bookamaze .
+```
+
+Then run it with:
+
+```bash
+docker run -p 3000:3000 --env-file .env.local bookamaze
+```
 
 ## Project Structure
 

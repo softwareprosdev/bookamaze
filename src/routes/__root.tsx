@@ -6,6 +6,7 @@ import { Header } from '../components/Header'
 import { WorkOSProvider } from '../integrations/workos/provider'
 import { QueryProvider } from '../integrations/query/provider'
 import { queryDevtoolsPlugin } from '../integrations/query/devtools'
+import { SentryErrorBoundary } from '../components/ErrorBoundary'
 
 const devtoolsPlugins = [
   queryDevtoolsPlugin,
@@ -30,16 +31,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <WorkOSProvider>
-          <QueryProvider>
-            <Header />
-            {children}
-            <TanStackRouterDevtools />
-            {devtoolsPlugins.map((plugin, i) => (
-              <React.Fragment key={i}>{plugin.render}</React.Fragment>
-            ))}
-          </QueryProvider>
-        </WorkOSProvider>
+        <SentryErrorBoundary>
+          <WorkOSProvider>
+            <QueryProvider>
+              <Header />
+              {children}
+              <TanStackRouterDevtools />
+              {devtoolsPlugins.map((plugin, i) => (
+                <React.Fragment key={i}>{plugin.render}</React.Fragment>
+              ))}
+            </QueryProvider>
+          </WorkOSProvider>
+        </SentryErrorBoundary>
         <Scripts />
       </body>
     </html>

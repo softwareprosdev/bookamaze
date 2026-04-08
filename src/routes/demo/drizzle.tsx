@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '~/db'
-import { posts } from '~/db/schema'
+// import { posts } from '~/db/schema' // Commented out - posts table doesn't exist
 
 const getPosts = createServerFn({ method: 'GET' }).handler(async () => {
   try {
-    return await db.select().from(posts)
+    // return await db.select().from(posts) // Commented out - posts table doesn't exist
+    return [] // Return empty array for demo
   } catch (error) {
     // Return empty array if table doesn't exist yet
     return []

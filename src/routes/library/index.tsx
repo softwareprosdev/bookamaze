@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { useAuth } from '@workos-inc/authkit-react'
 import {
   Search,
@@ -11,6 +11,7 @@ import {
   SortAsc,
   SortDesc,
   Loader2,
+  Share2,
 } from 'lucide-react'
 import { trpc } from '~/integrations/trpc/client'
 
@@ -29,6 +30,8 @@ function LibraryPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [page, setPage] = useState(1)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [selectedBookForShare, setSelectedBookForShare] = useState<Book | null>(null)
 
   const {
     data,
@@ -44,6 +47,15 @@ function LibraryPage() {
         page,
         limit: 20,
       }),
+    enabled: !!user,
+  })
+
+  const {
+    data: sharedBooks,
+    isLoading: sharedBooksLoading,
+  } = useQuery({
+    queryKey: ['shared-books'],
+    queryFn: () => trpc.books.getSharedWithMe.query(),
     enabled: !!user,
   })
 
@@ -183,7 +195,14 @@ function LibraryPage() {
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {data?.items.map((book) => (
-              <BookCard key={book.id} book={book} />
+              <BookCard
+                key={book.id}
+                book={book}
+                onShare={() => {
+                  setSelectedBookForShare(book)
+                  setShareDialogOpen(true)
+                }}
+              />
             ))}
           </div>
         ) : (
@@ -216,6 +235,37 @@ function LibraryPage() {
             </button>
           </div>
         )}
+
+        {/* Shared with Me Section */}
+        {sharedBooks && sharedBooks.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-xl font-semibold text-white mb-4">Shared with Me</h2>
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {sharedBooks.map((share) => (
+                  <SharedBookCard key={share.id} share={share} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {sharedBooks.map((share) => (
+                  <SharedBookListItem key={share.id} share={share} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Share Dialog */}
+        {shareDialogOpen && selectedBookForShare && (
+          <ShareDialog
+            book={selectedBookForShare}
+            onClose={() => {
+              setShareDialogOpen(false)
+              setSelectedBookForShare(null)
+            }}
+          />
+        )}
       </div>
     </div>
   )
@@ -231,43 +281,57 @@ interface Book {
   } | null
 }
 
-function BookCard({ book }: { book: Book }) {
+function BookCard({ book, onShare }: { book: Book; onShare: () => void }) {
   return (
-    <Link
-      to="/reader/$bookId"
-      params={{ bookId: book.id }}
-      className="group block"
-    >
-      <div className="aspect-[2/3] bg-gray-800 rounded-lg overflow-hidden mb-2 relative">
-        {book.coverUrl ? (
-          <img
-            src={book.coverUrl}
-            alt={book.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-            <BookOpen className="w-12 h-12 text-gray-600" />
-          </div>
-        )}
-        {/* Progress bar */}
-        {book.readingProgress?.percentComplete != null &&
-          book.readingProgress.percentComplete > 0 && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900/50">
-              <div
-                className="h-full bg-cyan-500"
-                style={{ width: `${book.readingProgress.percentComplete}%` }}
-              />
+    <div className="group block relative">
+      <Link
+        to="/reader/$bookId"
+        params={{ bookId: book.id }}
+        className="block"
+      >
+        <div className="aspect-[2/3] bg-gray-800 rounded-lg overflow-hidden mb-2 relative">
+          {book.coverUrl ? (
+            <img
+              src={book.coverUrl}
+              alt={book.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <BookOpen className="w-12 h-12 text-gray-600" />
             </div>
           )}
-      </div>
-      <h3 className="text-sm font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
-        {book.title}
-      </h3>
-      {book.author && (
-        <p className="text-xs text-gray-400 truncate">{book.author}</p>
-      )}
-    </Link>
+          {/* Progress bar */}
+          {book.readingProgress?.percentComplete != null &&
+            book.readingProgress.percentComplete > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900/50">
+                <div
+                  className="h-full bg-cyan-500"
+                  style={{ width: `${book.readingProgress.percentComplete}%` }}
+                />
+              </div>
+            )}
+        </div>
+        <h3 className="text-sm font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
+          {book.title}
+        </h3>
+        {book.author && (
+          <p className="text-xs text-gray-400 truncate">{book.author}</p>
+        )}
+      </Link>
+
+      {/* Share button */}
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          onShare()
+        }}
+        className="absolute top-2 right-2 p-2 bg-gray-900/80 hover:bg-gray-900 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Share book"
+      >
+        <Share2 className="w-4 h-4 text-white" />
+      </button>
+    </div>
   )
 }
 
@@ -306,5 +370,257 @@ function BookListItem({ book }: { book: Book }) {
           </div>
         )}
     </Link>
+  )
+}
+
+interface SharedBook {
+  id: string
+  book: Book
+  sharedByUser: {
+    displayName: string | null
+    email: string
+  }
+  permissions: {
+    canRead: boolean
+    canDownload: boolean
+  }
+}
+
+function SharedBookCard({ share }: { share: SharedBook }) {
+  return (
+    <div className="group block relative">
+      <Link
+        to="/reader/$bookId"
+        params={{ bookId: share.book.id }}
+        className="block"
+      >
+        <div className="aspect-[2/3] bg-gray-800 rounded-lg overflow-hidden mb-2 relative">
+          {share.book.coverUrl ? (
+            <img
+              src={share.book.coverUrl}
+              alt={share.book.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
+              <BookOpen className="w-12 h-12 text-gray-600" />
+            </div>
+          )}
+          {/* Progress bar */}
+          {share.book.readingProgress?.percentComplete != null &&
+            share.book.readingProgress.percentComplete > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900/50">
+                <div
+                  className="h-full bg-cyan-500"
+                  style={{ width: `${share.book.readingProgress.percentComplete}%` }}
+                />
+              </div>
+            )}
+        </div>
+        <h3 className="text-sm font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
+          {share.book.title}
+        </h3>
+        {share.book.author && (
+          <p className="text-xs text-gray-400 truncate">{share.book.author}</p>
+        )}
+        <p className="text-xs text-cyan-400 truncate">
+          Shared by {share.sharedByUser.displayName || share.sharedByUser.email}
+        </p>
+      </Link>
+    </div>
+  )
+}
+
+function SharedBookListItem({ share }: { share: SharedBook }) {
+  return (
+    <Link
+      to="/reader/$bookId"
+      params={{ bookId: share.book.id }}
+      className="flex items-center gap-4 p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition-colors group"
+    >
+      <div className="w-12 h-16 bg-gray-700 rounded overflow-hidden flex-shrink-0">
+        {share.book.coverUrl ? (
+          <img
+            src={share.book.coverUrl}
+            alt={share.book.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <BookOpen className="w-6 h-6 text-gray-500" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
+          {share.book.title}
+        </h3>
+        {share.book.author && (
+          <p className="text-sm text-gray-400 truncate">{share.book.author}</p>
+        )}
+        <p className="text-xs text-cyan-400 truncate">
+          Shared by {share.sharedByUser.displayName || share.sharedByUser.email}
+        </p>
+      </div>
+      {share.book.readingProgress?.percentComplete != null &&
+        share.book.readingProgress.percentComplete > 0 && (
+          <div className="text-sm text-gray-400">
+            {share.book.readingProgress.percentComplete}%
+          </div>
+        )}
+    </Link>
+  )
+}
+
+function ShareDialog({ book, onClose }: { book: Book; onClose: () => void }) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedUser, setSelectedUser] = useState<{ id: string; email: string; displayName: string | null } | null>(null)
+  const [canDownload, setCanDownload] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+
+  const { data: searchResults, isLoading: isSearching } = useQuery({
+    queryKey: ['searchUsers', searchQuery],
+    queryFn: () => trpc.books.searchUsers.query({ query: searchQuery }),
+    enabled: searchQuery.length > 0,
+  })
+
+  const shareMutation = useMutation({
+    mutationFn: (data: {
+      bookId: string
+      sharedWithUserId: string
+      permissions: { canRead: boolean; canDownload: boolean }
+    }) => trpc.books.shareBook.mutate(data),
+    onSuccess: () => {
+      alert('Book shared successfully!')
+      onClose()
+    },
+    onError: (error) => {
+      alert(`Failed to share book: ${error.message}`)
+    },
+  })
+
+  const handleShare = async () => {
+    if (!selectedUser) {
+      alert('Please select a user to share with')
+      return
+    }
+
+    setIsSharing(true)
+    try {
+      await shareMutation.mutateAsync({
+        bookId: book.id,
+        sharedWithUserId: selectedUser.id,
+        permissions: {
+          canRead: true,
+          canDownload,
+        },
+      })
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-semibold text-white mb-4">Share "{book.title}"</h2>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Search users
+            </label>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by email or name..."
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500"
+            />
+          </div>
+
+          {/* Search Results */}
+          {searchQuery && (
+            <div className="max-h-40 overflow-y-auto border border-gray-600 rounded-lg">
+              {isSearching ? (
+                <div className="p-3 text-center text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
+                  Searching...
+                </div>
+              ) : searchResults?.length === 0 ? (
+                <div className="p-3 text-center text-gray-400">
+                  No users found
+                </div>
+              ) : (
+                searchResults?.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => {
+                      setSelectedUser(user)
+                      setSearchQuery('')
+                    }}
+                    className="w-full p-3 text-left hover:bg-gray-700 border-b border-gray-600 last:border-b-0 transition-colors"
+                  >
+                    <div className="text-white font-medium">
+                      {user.displayName || user.email}
+                    </div>
+                    {user.displayName && (
+                      <div className="text-sm text-gray-400">{user.email}</div>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Selected User */}
+          {selectedUser && (
+            <div className="p-3 bg-gray-700 rounded-lg">
+              <div className="text-sm text-gray-300 mb-1">Sharing with:</div>
+              <div className="text-white font-medium">
+                {selectedUser.displayName || selectedUser.email}
+              </div>
+              {selectedUser.displayName && (
+                <div className="text-sm text-gray-400">{selectedUser.email}</div>
+              )}
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="text-xs text-red-400 hover:text-red-300 mt-1"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+
+          <div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={canDownload}
+                onChange={(e) => setCanDownload(e.target.checked)}
+                className="rounded border-gray-600 text-cyan-500 focus:ring-cyan-500"
+              />
+              <span className="text-sm text-gray-300">Allow downloading</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleShare}
+            disabled={isSharing || !selectedUser}
+            className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+          >
+            {isSharing ? 'Sharing...' : 'Share'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

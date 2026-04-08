@@ -13,10 +13,10 @@ function RouteComponent() {
   const strapiArticles = Route.useLoaderData()
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 p-8">
+    <div className="min-h-screen bg-linear-to-b from-slate-900 via-slate-800 to-slate-900 p-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-white">
-          <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+          <span className="bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
             Strapi
           </span>{' '}
           <span className="text-gray-300">Articles</span>

@@ -429,12 +429,10 @@ function UrlImport({ connections, onError, onSuccess }: UrlImportProps) {
 
   const addBookMutation = useMutation({
     mutationFn: (data: {
+      url: string
       title: string
-      source: 'url'
-      sourceUrl: string
       cloudConnectionId: string
-      cloudFileId: string
-    }) => trpc.books.add.mutate(data),
+    }) => trpc.books.importFromUrl.mutate(data),
     onSuccess: () => {
       onSuccess()
     },
@@ -449,26 +447,12 @@ function UrlImport({ connections, onError, onSuccess }: UrlImportProps) {
       return
     }
 
-    if (!url.endsWith('.pdf') && !url.includes('pdf')) {
-      onError('URL does not appear to be a PDF')
-      return
-    }
-
     setImporting(true)
     try {
-      // In production, this would:
-      // 1. Validate the URL
-      // 2. Fetch the PDF
-      // 3. Upload to cloud storage
-      // 4. Create book record
-
-      // Placeholder implementation
       addBookMutation.mutate({
+        url,
         title,
-        source: 'url',
-        sourceUrl: url,
         cloudConnectionId: selectedConnection,
-        cloudFileId: `url-import-${Date.now()}`,
       })
     } catch {
       onError('Failed to import from URL')

@@ -38,6 +38,8 @@ export const users = pgTable('users', {
 export const usersRelations = relations(users, ({ many }) => ({
   cloudConnections: many(cloudConnections),
   books: many(books),
+  sharedBooksSent: many(sharedBooks, { relationName: 'sharedByUser' }),
+  sharedBooksReceived: many(sharedBooks, { relationName: 'sharedWithUser' }),
 }))
 
 // Cloud Storage Connections (OAuth tokens)
@@ -47,8 +49,10 @@ export const cloudConnections = pgTable('cloud_connections', {
     .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
   provider: cloudProviderEnum('provider').notNull(),
-  accessToken: text('access_token').notNull(),
+  accessToken: text('access_token').notNull(),  // Keep for backward compatibility
+  accessTokenEncrypted: text('access_token_encrypted'),  // New encrypted field
   refreshToken: text('refresh_token'),
+  refreshTokenEncrypted: text('refresh_token_encrypted'),  // New encrypted field
   tokenExpiresAt: timestamp('token_expires_at'),
   accountEmail: text('account_email'),
   accountId: text('account_id'),
@@ -117,6 +121,7 @@ export const booksRelations = relations(books, ({ one, many }) => ({
     references: [readingProgress.bookId],
   }),
   bookmarks: many(bookmarks),
+  sharedBooks: many(sharedBooks),
 }))
 
 // Reading Progress
@@ -175,5 +180,39 @@ export const bookmarksRelations = relations(bookmarks, ({ one }) => ({
   book: one(books, {
     fields: [bookmarks.bookId],
     references: [books.id],
+  }),
+}))
+
+// Shared Books (books shared between users on the platform)
+export const sharedBooks = pgTable('shared_books', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  bookId: uuid('book_id')
+    .references(() => books.id, { onDelete: 'cascade' })
+    .notNull(),
+  sharedByUserId: uuid('shared_by_user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  sharedWithUserId: uuid('shared_with_user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  permissions: jsonb('permissions').$type<{
+    canRead: boolean
+    canDownload?: boolean
+  }>().default({ canRead: true }),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
+export const sharedBooksRelations = relations(sharedBooks, ({ one }) => ({
+  book: one(books, {
+    fields: [sharedBooks.bookId],
+    references: [books.id],
+  }),
+  sharedByUser: one(users, {
+    fields: [sharedBooks.sharedByUserId],
+    references: [users.id],
+  }),
+  sharedWithUser: one(users, {
+    fields: [sharedBooks.sharedWithUserId],
+    references: [users.id],
   }),
 }))

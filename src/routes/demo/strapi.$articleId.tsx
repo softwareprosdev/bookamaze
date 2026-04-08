@@ -13,7 +13,7 @@ function RouteComponent() {
   const article = Route.useLoaderData()
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 p-8">
+    <div className="min-h-screen bg-linear-to-b from-slate-900 via-slate-800 to-slate-900 p-8">
       <div className="max-w-4xl mx-auto">
         <Link
           to="/demo/strapi"

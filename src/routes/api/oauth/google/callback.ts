@@ -1,16 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 import { db } from '~/db'
-import { cloudConnections } from '~/db/schema'
+import { cloudConnections, users } from '~/db/schema'
+import { serverConfig } from '~/config'
+import { encryptToken } from '~/utils/crypto'
 import {
   exchangeGoogleCode,
   getGoogleUserInfo,
   getOrCreateBookamazeFolder,
 } from '~/integrations/cloud/google-drive'
 
-interface OAuthState {
-  userId: string
-  provider: string
-}
+const OAuthStateSchema = z.object({
+  userId: z.string().uuid(),
+  provider: z.enum(['google_drive', 'dropbox']),
+})
 
 async function handler({ request }: { request: Request }) {
   const url = new URL(request.url)
@@ -38,12 +42,40 @@ async function handler({ request }: { request: Request }) {
   }
 
   try {
-    // Decode state
-    const stateData: OAuthState = JSON.parse(
-      Buffer.from(state, 'base64').toString()
-    )
+    // Parse and validate state
+    let stateData: z.infer<typeof OAuthStateSchema>
+    try {
+      const decoded = JSON.parse(Buffer.from(state, 'base64').toString())
+      stateData = OAuthStateSchema.parse(decoded)
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        console.error('Invalid OAuth state schema:', err.errors)
+      } else {
+        console.error('Failed to decode OAuth state:', err)
+      }
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: '/settings/storage?error=invalid_state',
+        },
+      })
+    }
 
-    const baseUrl = process.env.VITE_APP_URL ?? 'http://localhost:3000'
+    // Verify user exists and hasn't been deleted
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, stateData.userId),
+    })
+
+    if (!user) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: '/settings/storage?error=user_not_found',
+        },
+      })
+    }
+
+    const baseUrl = serverConfig.VITE_APP_URL
     const redirectUri = `${baseUrl}/api/oauth/google/callback`
 
     // Exchange code for tokens
@@ -58,12 +90,20 @@ async function handler({ request }: { request: Request }) {
     // Calculate token expiry
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000)
 
+    // Encrypt tokens before storing
+    const encryptedAccessToken = encryptToken(tokens.access_token)
+    const encryptedRefreshToken = tokens.refresh_token 
+      ? encryptToken(tokens.refresh_token) 
+      : null
+
     // Save connection to database
     await db.insert(cloudConnections).values({
       userId: stateData.userId,
       provider: 'google_drive',
-      accessToken: tokens.access_token,
+      accessToken: tokens.access_token, // Keep plaintext for backward compatibility
+      accessTokenEncrypted: encryptedAccessToken,
       refreshToken: tokens.refresh_token,
+      refreshTokenEncrypted: encryptedRefreshToken,
       tokenExpiresAt,
       accountEmail: userInfo.email,
       accountId: userInfo.id,

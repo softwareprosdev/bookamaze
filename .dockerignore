@@ -1,0 +1,13 @@
+node_modules
+.dockerignore
+Dockerfile
+docker-compose.yml
+.git
+.gitignore
+.env
+.env.local
+dist
+.build
+.output
+pnpm-debug.log*
+**/node_modules

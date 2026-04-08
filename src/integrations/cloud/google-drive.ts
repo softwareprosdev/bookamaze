@@ -1,7 +1,8 @@
 // Google Drive OAuth and API integration
+import { serverConfig } from '~/config'
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
+const GOOGLE_CLIENT_ID = serverConfig.GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_SECRET = serverConfig.GOOGLE_CLIENT_SECRET
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
