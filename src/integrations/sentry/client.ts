@@ -1,10 +1,10 @@
 import * as Sentry from '@sentry/react'
 
 export function initSentry() {
-  if (typeof window !== 'undefined' && process.env.SENTRY_DSN) {
+  if (typeof window !== 'undefined' && import.meta.env.VITE_SENTRY_DSN) {
     Sentry.init({
-      dsn: process.env.SENTRY_DSN,
-      environment: process.env.NODE_ENV,
+      dsn: import.meta.env.VITE_SENTRY_DSN,
+      environment: import.meta.env.MODE,
       tracesSampleRate: 1.0,
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,
