@@ -1,54 +1,22 @@
 import { z } from 'zod'
 
 const ServerEnvSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  GOOGLE_CLIENT_ID: z.string(),
-  GOOGLE_CLIENT_SECRET: z.string(),
-  DROPBOX_APP_KEY: z.string(),
-  DROPBOX_APP_SECRET: z.string(),
-  VITE_APP_URL: z.string().url(),
-  TOKEN_ENCRYPTION_KEY: z.string().length(32, 'TOKEN_ENCRYPTION_KEY must be exactly 32 characters'),
-  SENTRY_DSN: z.string().url().optional(),
+  DATABASE_PATH: z.string().optional(),
+  JWT_SECRET: z.string().optional(),
+  VITE_APP_URL: z.string().default('http://localhost:3000'),
 })
 
 const ClientEnvSchema = z.object({
-  VITE_WORKOS_CLIENT_ID: z.string(),
-  VITE_APP_URL: z.string().url(),
+  VITE_APP_URL: z.string().default('http://localhost:3000'),
 })
 
-function validateServerEnv() {
-  const result = ServerEnvSchema.safeParse(process.env)
-
-  if (!result.success) {
-    const errors = result.error.errors
-      .map(e => `${e.path.join('.')}: ${e.message}`)
-      .join('\n')
-
-    console.error(`\n❌ Missing or invalid server environment variables:\n${errors}`)
-    process.exit(1)
-  }
-}
-
-function validateClientEnv() {
-  const result = ClientEnvSchema.safeParse(import.meta.env)
-
-  if (!result.success) {
-    const errors = result.error.errors
-      .map(e => `${e.path.join('.')}: ${e.message}`)
-      .join('\n')
-
-    console.error(`\n❌ Missing or invalid client environment variables:\n${errors}`)
-    throw new Error('Invalid client environment')
-  }
-}
-
 // Export validated config
-export const serverConfig = (() => {
-  validateServerEnv()
-  return ServerEnvSchema.parse(process.env)
-})()
+export const serverConfig = ServerEnvSchema.parse({
+  DATABASE_PATH: process.env.DATABASE_PATH,
+  JWT_SECRET: process.env.JWT_SECRET,
+  VITE_APP_URL: process.env.VITE_APP_URL,
+})
 
-export const clientConfig = (() => {
-  validateClientEnv()
-  return ClientEnvSchema.parse(import.meta.env)
-})()
+export const clientConfig = ClientEnvSchema.parse({
+  VITE_APP_URL: import.meta.env.VITE_APP_URL,
+})

@@ -6,10 +6,8 @@ import tailwindcss from '@tailwindcss/vite'
 import sentryPlugin from './src/integrations/sentry/vite-plugin'
 import paraglide from './paraglide-vite-plugin'
 
-const isDev = process.env.NODE_ENV !== 'production'
-
 async function getPlugins() {
-  const plugins = [
+  return [
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
@@ -19,37 +17,10 @@ async function getPlugins() {
     sentryPlugin(),
     paraglide(),
   ]
-
-  if (isDev) {
-    try {
-      const { neon } = await import('vite-plugin-neon-new')
-      plugins.push(
-        neon({
-          seedFile: 'db/init.sql',
-          envKey: 'DATABASE_URL',
-        })
-      )
-    } catch (e) {
-      console.warn('vite-plugin-neon-new not available, skipping DB plugin')
-    }
-  }
-
-  return plugins
 }
 
 export default defineConfig(async () => ({
-  plugins: [...(await getPlugins()),
-    {
-      name: 'exclude-demo-routes',
-      resolveId(id) {
-        const normalizedId = id?.replace(/\\/g, '/')
-
-        if (normalizedId?.includes('/routes/demo/') && process.env.NODE_ENV === 'production') {
-          return { id: '', external: true }
-        }
-      },
-    },
-  ],
+  plugins: [...(await getPlugins())],
   server: {
     host: "0.0.0.0",
     port: 3000,
