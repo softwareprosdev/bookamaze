@@ -1,4 +1,4 @@
-import { drizzle } from 'drizzle-orm/sql.js'
+import { drizzle } from 'drizzle-orm'
 import initSqlJs, { type Database } from 'sql.js'
 import { join } from 'path'
 import * as schema from './schema'
@@ -7,7 +7,6 @@ const DB_PATH = process.env.DATABASE_PATH || join(process.cwd(), 'data', 'bookam
 
 let db: ReturnType<typeof drizzle> | null = null
 let sqliteDb: Database | null = null
-let SQL: Awaited<ReturnType<typeof initSqlJs>> | null = null
 
 export async function getDb() {
   if (!db) {
@@ -18,7 +17,7 @@ export async function getDb() {
       mkdirSync(dir, { recursive: true })
     }
 
-    SQL = await initSqlJs()
+    const SQL = await initSqlJs()
     
     const dbFilePath = DB_PATH
     if (existsSync(dbFilePath)) {
@@ -28,7 +27,8 @@ export async function getDb() {
       sqliteDb = new SQL.Database()
     }
     
-    db = drizzle(sqliteDb, { schema })
+    // Create drizzle instance with sql.js
+    db = drizzle({ client: sqliteDb })
     
     // Initialize tables
     sqliteDb.run(`
