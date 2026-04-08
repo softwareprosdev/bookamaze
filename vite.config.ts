@@ -3,7 +3,6 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
-import { cloudflare } from '@cloudflare/vite-plugin'
 import sentryPlugin from './src/integrations/sentry/vite-plugin'
 import paraglide from './paraglide-vite-plugin'
 
@@ -15,9 +14,8 @@ async function getPlugins() {
       projects: ['./tsconfig.json'],
     }),
     tailwindcss(),
-    tanstackStart(),
+    tanstackStart({ ssr: false }),
     viteReact(),
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
     sentryPlugin(),
     paraglide(),
   ]
@@ -41,7 +39,6 @@ async function getPlugins() {
 
 export default defineConfig(async () => ({
   plugins: [...(await getPlugins()),
-    // Exclude demo routes in production
     {
       name: 'exclude-demo-routes',
       resolveId(id) {
@@ -53,4 +50,7 @@ export default defineConfig(async () => ({
       },
     },
   ],
+  server: {
+    port: 3000,
+  },
 }))
