@@ -1,8 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb } from '~/db'
-import { users } from '~/db/schema'
-import { eq } from 'drizzle-orm'
 import { verifyPassword } from '~/lib/password'
 import { signJWT, getSessionCookieOptions, createCookieHeader } from '~/lib/auth'
 
@@ -20,18 +17,24 @@ export const Route = createAPIFileRoute('/api/auth/login')({
       }
 
       const db = await getDb()
+      const lowerEmail = email.toLowerCase()
       
-      // Find user
-      const user = db.select().from(users).where(eq(users.email, email.toLowerCase())).get()
-      if (!user) {
+      const result = db.exec(`SELECT id, email, password_hash, display_name, avatar_url FROM users WHERE email = '${lowerEmail}'`)
+      if (result.length === 0 || result[0].values.length === 0) {
         return new Response(
           JSON.stringify({ error: 'Invalid email or password' }),
           { status: 401, headers: { 'Content-Type': 'application/json' } }
         )
       }
 
-      // Verify password
-      const valid = await verifyPassword(password, user.passwordHash)
+      const row = result[0].values[0]
+      const userId = row[0] as string
+      const userEmail = row[1] as string
+      const passwordHash = row[2] as string
+      const displayName = row[3] as string | null
+      const avatarUrl = row[4] as string | null
+
+      const valid = await verifyPassword(password, passwordHash)
       if (!valid) {
         return new Response(
           JSON.stringify({ error: 'Invalid email or password' }),
@@ -39,8 +42,7 @@ export const Route = createAPIFileRoute('/api/auth/login')({
         )
       }
 
-      // Create session
-      const token = await signJWT({ userId: user.id, email: user.email })
+      const token = await signJWT({ userId, email: userEmail })
       const cookieOptions = getSessionCookieOptions()
       const cookie = createCookieHeader({ ...cookieOptions, value: token })
 
@@ -48,10 +50,10 @@ export const Route = createAPIFileRoute('/api/auth/login')({
         JSON.stringify({ 
           success: true, 
           user: { 
-            id: user.id, 
-            email: user.email, 
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
+            id: userId, 
+            email: userEmail, 
+            displayName,
+            avatarUrl,
           } 
         }),
         { 

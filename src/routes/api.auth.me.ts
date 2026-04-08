@@ -1,8 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb } from '~/db'
-import { users } from '~/db/schema'
-import { eq } from 'drizzle-orm'
 import { verifyJWT, parseCookies } from '~/lib/auth'
 
 export const Route = createAPIFileRoute('/api/auth/me')({
@@ -35,9 +32,9 @@ export const Route = createAPIFileRoute('/api/auth/me')({
       }
 
       const db = await getDb()
-      const user = db.select().from(users).where(eq(users.id, payload.userId)).get()
+      const result = db.exec(`SELECT id, email, display_name, avatar_url FROM users WHERE id = '${payload.userId}'`)
 
-      if (!user) {
+      if (result.length === 0 || result[0].values.length === 0) {
         const clearCookie = `bookamaze_session=; Path=/; Max-Age=0; SameSite=lax`
         return new Response(
           JSON.stringify({ user: null }),
@@ -51,13 +48,15 @@ export const Route = createAPIFileRoute('/api/auth/me')({
         )
       }
 
+      const row = result[0].values[0]
+
       return new Response(
         JSON.stringify({ 
           user: { 
-            id: user.id, 
-            email: user.email, 
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
+            id: row[0] as string, 
+            email: row[1] as string, 
+            displayName: row[2] as string | null,
+            avatarUrl: row[3] as string | null,
           } 
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
