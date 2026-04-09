@@ -32,6 +32,9 @@ pnpm-debug.log*
 # Generated
 src/routeTree.gen.ts
 
+# Local SQLite database
+data/*.db
+
 # Integration-specific
 drizzle/
 .sentryclirc

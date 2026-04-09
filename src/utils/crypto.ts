@@ -2,6 +2,9 @@ import crypto from 'crypto'
 import { serverConfig } from '~/config'
 
 const ENCRYPTION_KEY = serverConfig.TOKEN_ENCRYPTION_KEY
+if (!ENCRYPTION_KEY) {
+  throw new Error('TOKEN_ENCRYPTION_KEY is required to use token encryption utilities')
+}
 
 export function encryptToken(token: string): string {
   const iv = crypto.randomBytes(16)

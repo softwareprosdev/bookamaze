@@ -5,9 +5,7 @@ import appCss from '../styles.css?url'
 import { QueryProvider } from '../integrations/query/provider'
 import { queryDevtoolsPlugin } from '../integrations/query/devtools'
 
-const devtoolsPlugins = [
-  queryDevtoolsPlugin,
-]
+const devtoolsPlugins = import.meta.env.DEV ? [queryDevtoolsPlugin] : []
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,7 +28,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <QueryProvider>
           {children}
-          <TanStackRouterDevtools />
+          {import.meta.env.DEV ? <TanStackRouterDevtools /> : null}
           {devtoolsPlugins.map((plugin, i) => (
             <React.Fragment key={i}>{plugin.render}</React.Fragment>
           ))}

@@ -1,9 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
-import type { Context } from '@tanstack/react-start/server'
+import { serverConfig } from '~/config'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'bookamaze-dev-secret-change-in-production-32chars'
-)
+const JWT_SECRET = new TextEncoder().encode(serverConfig.JWT_SECRET)
 
 const COOKIE_NAME = 'bookamaze_session'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
@@ -57,7 +55,7 @@ export function getClearCookieOptions() {
 
 export function parseCookies(cookieHeader: string | null): Record<string, string> {
   if (!cookieHeader) return {}
-  
+
   return cookieHeader.split(';').reduce((cookies, cookie) => {
     const [name, ...rest] = cookie.trim().split('=')
     if (name) {
@@ -82,10 +80,10 @@ export function createCookieHeader(options: {
     `Max-Age=${options.maxAge || 0}`,
     `SameSite=${options.sameSite || 'lax'}`,
   ]
-  
+
   if (options.httpOnly) parts.push('HttpOnly')
   if (options.secure) parts.push('Secure')
-  
+
   return parts.join('; ')
 }
 

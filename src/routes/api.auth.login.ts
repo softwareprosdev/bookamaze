@@ -19,21 +19,28 @@ export const Route = createAPIFileRoute('/api/auth/login')({
 
       const db = await getDb()
       const lowerEmail = email.toLowerCase()
-      
-      const result = db.exec(`SELECT id, email, password_hash, display_name, avatar_url FROM users WHERE email = '${lowerEmail}'`)
-      if (result.length === 0 || result[0].values.length === 0) {
+
+      const stmt = db.prepare(
+        'SELECT id, email, password_hash, display_name, avatar_url FROM users WHERE email = ?'
+      )
+      stmt.bind([lowerEmail])
+
+      if (!stmt.step()) {
+        stmt.free()
         return new Response(
           JSON.stringify({ error: 'Invalid email or password' }),
           { status: 401, headers: { 'Content-Type': 'application/json' } }
         )
       }
 
-      const row = result[0].values[0]
-      const userId = row[0] as string
-      const userEmail = row[1] as string
-      const passwordHash = row[2] as string
-      const displayName = row[3] as string | null
-      const avatarUrl = row[4] as string | null
+      const row = stmt.getAsObject() as Record<string, unknown>
+      stmt.free()
+
+      const userId = row.id as string
+      const userEmail = row.email as string
+      const passwordHash = row.password_hash as string
+      const displayName = (row.display_name as string) ?? null
+      const avatarUrl = (row.avatar_url as string) ?? null
 
       const valid = await verifyPassword(password, passwordHash)
       if (!valid) {

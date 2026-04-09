@@ -36,7 +36,7 @@ function HomePage() {
           Welcome to Bookamaze
         </h1>
         <p className="text-xl text-gray-300 mb-8">
-          Your free PDF book library with cloud sync
+          Secure account authentication and a foundation for future PDF library features.
         </p>
         <div className="flex gap-4 justify-center flex-wrap">
           {isAuthenticated ? (
@@ -66,10 +66,10 @@ function HomePage() {
         <div style={{ marginTop: '3rem', color: '#9ca3af', fontSize: '0.875rem' }}>
           <p>Features:</p>
           <ul style={{ listStyle: 'none', padding: 0, marginTop: '0.5rem' }}>
-            <li>Upload PDFs or import from URLs</li>
-            <li>Search Open Library and Internet Archive</li>
-            <li>Read with progress sync across devices</li>
-            <li>Share books with friends</li>
+            <li>Secure email/password authentication</li>
+            <li>Protected dashboard with account session handling</li>
+            <li>Local SQLite storage for user data</li>
+            <li>Placeholder pages for upload, discovery, and library features</li>
           </ul>
         </div>
       </div>

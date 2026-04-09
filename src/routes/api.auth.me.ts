@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb } from '~/db'
-import { verifyJWT, parseCookies } from '~/lib/auth'
+import { verifyJWT, parseCookies, clearCookieHeader } from '~/lib/auth'
 
 export const Route = createAPIFileRoute('/api/auth/me')({
   GET: async ({ request }) => {
@@ -19,46 +19,49 @@ export const Route = createAPIFileRoute('/api/auth/me')({
 
       const payload = await verifyJWT(token)
       if (!payload) {
-        const clearCookie = `bookamaze_session=; Path=/; Max-Age=0; SameSite=lax`
         return new Response(
           JSON.stringify({ user: null }),
           { 
             status: 200, 
             headers: { 
               'Content-Type': 'application/json',
-              'Set-Cookie': clearCookie,
+              'Set-Cookie': clearCookieHeader('bookamaze_session', '/'),
             } 
-          }
+          } 
         )
       }
 
       const db = await getDb()
-      const result = db.exec(`SELECT id, email, display_name, avatar_url FROM users WHERE id = '${payload.userId}'`)
+      const stmt = db.prepare(
+        'SELECT id, email, display_name, avatar_url FROM users WHERE id = ?'
+      )
+      stmt.bind([payload.userId])
 
-      if (result.length === 0 || result[0].values.length === 0) {
-        const clearCookie = `bookamaze_session=; Path=/; Max-Age=0; SameSite=lax`
+      if (!stmt.step()) {
+        stmt.free()
         return new Response(
           JSON.stringify({ user: null }),
           { 
             status: 200, 
             headers: { 
               'Content-Type': 'application/json',
-              'Set-Cookie': clearCookie,
+              'Set-Cookie': clearCookieHeader('bookamaze_session', '/'),
             } 
-          }
+          } 
         )
       }
 
-      const row = result[0].values[0]
+      const row = stmt.getAsObject() as Record<string, unknown>
+      stmt.free()
 
       return new Response(
         JSON.stringify({ 
           user: { 
-            id: row[0] as string, 
-            email: row[1] as string, 
-            displayName: row[2] as string | null,
-            avatarUrl: row[3] as string | null,
-          } 
+            id: row.id as string, 
+            email: row.email as string, 
+            displayName: (row.display_name as string) ?? null,
+            avatarUrl: (row.avatar_url as string) ?? null,
+          }
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       )

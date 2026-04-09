@@ -1,5 +1,3 @@
-import { z } from 'zod'
-
 const ALLOWED_DOMAINS = [
   'example.com',
   'open-library.org',
@@ -8,11 +6,6 @@ const ALLOWED_DOMAINS = [
 ]
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024  // 100MB
-
-const UrlImportSchema = z.object({
-  url: z.string().url('Invalid URL'),
-  title: z.string().min(1, 'Title required'),
-})
 
 export async function validateAndDownloadPDF(
   url: string

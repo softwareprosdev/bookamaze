@@ -27,9 +27,13 @@ export const Route = createAPIFileRoute('/api/auth/register')({
 
       const db = await getDb()
       const lowerEmail = email.toLowerCase()
-      
-      const existing = db.exec(`SELECT id FROM users WHERE email = '${lowerEmail}'`)
-      if (existing.length > 0 && existing[0].values.length > 0) {
+
+      const existingStmt = db.prepare('SELECT id FROM users WHERE email = ?')
+      existingStmt.bind([lowerEmail])
+      const alreadyRegistered = existingStmt.step()
+      existingStmt.free()
+
+      if (alreadyRegistered) {
         return new Response(
           JSON.stringify({ error: 'Email already registered' }),
           { status: 409, headers: { 'Content-Type': 'application/json' } }
@@ -40,12 +44,12 @@ export const Route = createAPIFileRoute('/api/auth/register')({
       const userId = randomUUID()
       const display = displayName || email.split('@')[0]
       const createdAt = Date.now()
-      
+
       db.run(
         `INSERT INTO users (id, email, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)`,
         [userId, lowerEmail, passwordHash, display, createdAt]
       )
-      
+
       saveDb()
 
       const token = await signJWT({ userId, email: lowerEmail })
