@@ -1,11 +1,9 @@
-import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb } from '~/db'
 import { createCookieHeader, getSessionCookieOptions, signJWT } from '~/lib/auth'
 import { verifyPassword } from '~/lib/password'
 
-export const Route = createAPIFileRoute('/api/auth/login')({
-  POST: async ({ request }) => {
-    try {
+export async function POST({ request }: { request: Request }) {
+  try {
       const body = (await request.json()) as {
         email?: string
         password?: string
@@ -74,12 +72,11 @@ export const Route = createAPIFileRoute('/api/auth/login')({
           } 
         }
       )
-    } catch (error) {
-      console.error('Login error:', error)
-      return new Response(
-        JSON.stringify({ error: 'Internal server error' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-  },
-})
+  } catch (error) {
+    console.error('Login error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+}
