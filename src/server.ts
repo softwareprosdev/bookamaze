@@ -24,6 +24,18 @@ function json(body: unknown, init?: globalThis.ResponseInit) {
   })
 }
 
+function toOpenLibraryCover(coverId: number | undefined): string | null {
+  if (!coverId) return null
+  return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
+}
+
+function toOpenLibraryReadUrl(editionKeys: unknown): string | null {
+  if (!Array.isArray(editionKeys) || editionKeys.length === 0) return null
+  const first = editionKeys[0]
+  if (typeof first !== 'string') return null
+  return `https://openlibrary.org/books/${first}`
+}
+
 async function handleAuthApi(request: globalThis.Request): Promise<globalThis.Response | null> {
   const url = new globalThis.URL(request.url)
   const { pathname } = url
@@ -156,6 +168,58 @@ async function handleAuthApi(request: globalThis.Request): Promise<globalThis.Re
       { success: true },
       { status: 200, headers: { 'Set-Cookie': clearCookieHeader('bookamaze_session', '/') } }
     )
+  }
+
+  if (pathname === '/api/books/search' && method === 'GET') {
+    const query = (url.searchParams.get('q') || '').trim()
+    const limit = Math.min(Number(url.searchParams.get('limit') || '20') || 20, 40)
+
+    if (!query) {
+      return json({ books: [] }, { status: 200 })
+    }
+
+    try {
+      const openLibraryUrl = new globalThis.URL('https://openlibrary.org/search.json')
+      openLibraryUrl.searchParams.set('q', query)
+      openLibraryUrl.searchParams.set('limit', String(limit))
+
+      const response = await globalThis.fetch(openLibraryUrl.toString())
+      if (!response.ok) {
+        return json({ error: 'Failed to fetch books' }, { status: 502 })
+      }
+
+      const data = (await response.json()) as {
+        docs?: Array<Record<string, unknown>>
+      }
+
+      const books = (data.docs || []).map((doc) => {
+        const key = typeof doc.key === 'string' ? doc.key : ''
+        const id = key || `ol:${String(doc.cover_edition_key || doc.cover_i || Math.random())}`
+        const title = typeof doc.title === 'string' ? doc.title : 'Untitled'
+        const authors = Array.isArray(doc.author_name)
+          ? doc.author_name.filter((item): item is string => typeof item === 'string')
+          : []
+        const year = typeof doc.first_publish_year === 'number' ? doc.first_publish_year : null
+        const coverId = typeof doc.cover_i === 'number' ? doc.cover_i : undefined
+        const openLibraryPath = key ? `https://openlibrary.org${key}` : 'https://openlibrary.org'
+
+        return {
+          id,
+          title,
+          author: authors.length > 0 ? authors.slice(0, 2).join(', ') : 'Unknown author',
+          year,
+          source: 'openlibrary',
+          coverUrl: toOpenLibraryCover(coverId),
+          openLibraryUrl: openLibraryPath,
+          readUrl: toOpenLibraryReadUrl(doc.edition_key),
+          description: null,
+        }
+      })
+
+      return json({ books }, { status: 200 })
+    } catch {
+      return json({ error: 'Book search failed' }, { status: 500 })
+    }
   }
 
   return null
