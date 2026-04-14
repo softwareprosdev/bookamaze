@@ -1,13 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb } from '~/db'
+import { createCookieHeader, getSessionCookieOptions, signJWT } from '~/lib/auth'
 import { verifyPassword } from '~/lib/password'
-import { signJWT, getSessionCookieOptions, createCookieHeader } from '~/lib/auth'
 
 export const Route = createAPIFileRoute('/api/auth/login')({
   POST: async ({ request }) => {
     try {
-      const body = await request.json()
+      const body = (await request.json()) as {
+        email?: string
+        password?: string
+      }
       const { email, password } = body
 
       if (!email || !password) {

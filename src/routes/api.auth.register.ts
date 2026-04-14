@@ -1,14 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createAPIFileRoute } from '@tanstack/react-start/server'
-import { getDb, saveDb } from '~/db'
-import { hashPassword } from '~/lib/password'
-import { signJWT, getSessionCookieOptions, createCookieHeader } from '~/lib/auth'
 import { randomUUID } from 'crypto'
+import { createAPIFileRoute } from '@tanstack/react-start/api'
+import { getDb, saveDb } from '~/db'
+import { createCookieHeader, getSessionCookieOptions, signJWT } from '~/lib/auth'
+import { hashPassword } from '~/lib/password'
 
 export const Route = createAPIFileRoute('/api/auth/register')({
   POST: async ({ request }) => {
     try {
-      const body = await request.json()
+      const body = (await request.json()) as {
+        email?: string
+        password?: string
+        displayName?: string
+      }
       const { email, password, displayName } = body
 
       if (!email || !password) {
