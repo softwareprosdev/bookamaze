@@ -1,7 +1,7 @@
 import { getDb } from '~/db'
 import { clearCookieHeader, parseCookies, verifyJWT } from '~/lib/auth'
 
-export async function GET({ request }: { request: Request }) {
+export async function GET({ request }: { request: globalThis.Request }) {
   try {
       const cookieHeader = request.headers.get('cookie')
       const cookies = parseCookies(cookieHeader)

@@ -3,7 +3,7 @@ import { getDb, saveDb } from '~/db'
 import { createCookieHeader, getSessionCookieOptions, signJWT } from '~/lib/auth'
 import { hashPassword } from '~/lib/password'
 
-export async function POST({ request }: { request: Request }) {
+export async function POST({ request }: { request: globalThis.Request }) {
   try {
       const body = (await request.json()) as {
         email?: string
