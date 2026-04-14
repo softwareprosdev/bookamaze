@@ -1,10 +1,7 @@
 import { randomUUID } from 'crypto'
-import { createFileRoute } from '@tanstack/react-router'
 import { getDb, saveDb } from '~/db'
 import { createCookieHeader, getSessionCookieOptions, signJWT } from '~/lib/auth'
 import { hashPassword } from '~/lib/password'
-
-export const Route = createFileRoute('/api/auth/register')({})
 
 export async function POST({ request }: { request: globalThis.Request }) {
   try {
