@@ -1,5 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { getDb } from '~/db'
 import { clearCookieHeader, parseCookies, verifyJWT } from '~/lib/auth'
+
+export const Route = createFileRoute('/api/auth/me')({})
 
 export async function GET({ request }: { request: globalThis.Request }) {
   try {

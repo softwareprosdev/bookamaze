@@ -1,4 +1,7 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { clearCookieHeader } from '~/lib/auth'
+
+export const Route = createFileRoute('/api/auth/logout')({})
 
 export async function POST() {
   const cookie = clearCookieHeader('bookamaze_session', '/')
