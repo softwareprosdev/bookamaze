@@ -1,11 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createAPIFileRoute } from '@tanstack/react-start/server'
 import { getDb } from '~/db'
-import { verifyJWT, parseCookies, clearCookieHeader } from '~/lib/auth'
+import { clearCookieHeader, parseCookies, verifyJWT } from '~/lib/auth'
 
-export const Route = createAPIFileRoute('/api/auth/me')({
-  GET: async ({ request }) => {
-    try {
+export async function GET({ request }: { request: globalThis.Request }) {
+  try {
       const cookieHeader = request.headers.get('cookie')
       const cookies = parseCookies(cookieHeader)
       const token = cookies['bookamaze_session']
@@ -65,12 +62,11 @@ export const Route = createAPIFileRoute('/api/auth/me')({
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       )
-    } catch (error) {
-      console.error('Me error:', error)
-      return new Response(
-        JSON.stringify({ user: null }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-  },
-})
+  } catch (error) {
+    console.error('Me error:', error)
+    return new Response(
+      JSON.stringify({ user: null }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+}

@@ -1,14 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createAPIFileRoute } from '@tanstack/react-start/server'
-import { getDb, saveDb } from '~/db'
-import { hashPassword } from '~/lib/password'
-import { signJWT, getSessionCookieOptions, createCookieHeader } from '~/lib/auth'
 import { randomUUID } from 'crypto'
+import { getDb, saveDb } from '~/db'
+import { createCookieHeader, getSessionCookieOptions, signJWT } from '~/lib/auth'
+import { hashPassword } from '~/lib/password'
 
-export const Route = createAPIFileRoute('/api/auth/register')({
-  POST: async ({ request }) => {
-    try {
-      const body = await request.json()
+export async function POST({ request }: { request: globalThis.Request }) {
+  try {
+      const body = (await request.json()) as {
+        email?: string
+        password?: string
+        displayName?: string
+      }
       const { email, password, displayName } = body
 
       if (!email || !password) {
@@ -42,7 +43,7 @@ export const Route = createAPIFileRoute('/api/auth/register')({
 
       const passwordHash = await hashPassword(password)
       const userId = randomUUID()
-      const display = displayName || email.split('@')[0]
+      const display = displayName || email.split('@')[0] || email
       const createdAt = Date.now()
 
       db.run(
@@ -69,12 +70,11 @@ export const Route = createAPIFileRoute('/api/auth/register')({
           } 
         }
       )
-    } catch (error) {
-      console.error('Register error:', error)
-      return new Response(
-        JSON.stringify({ error: 'Internal server error' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-  },
-})
+  } catch (error) {
+    console.error('Register error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+}

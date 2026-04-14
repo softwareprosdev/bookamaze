@@ -1,5 +1,5 @@
 import React from 'react'
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import appCss from '../styles.css?url'
 import { QueryProvider } from '../integrations/query/provider'
@@ -19,7 +19,7 @@ export const Route = createRootRoute({
   component: RootDocument,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument() {
   return (
     <html lang="en">
       <head>
@@ -27,7 +27,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <QueryProvider>
-          {children}
+          <Outlet />
           {import.meta.env.DEV ? <TanStackRouterDevtools /> : null}
           {devtoolsPlugins.map((plugin, i) => (
             <React.Fragment key={i}>{plugin.render}</React.Fragment>
