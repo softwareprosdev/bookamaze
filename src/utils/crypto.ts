@@ -8,7 +8,8 @@ if (!ENCRYPTION_KEY) {
 
 export function encryptToken(token: string): string {
   const iv = crypto.randomBytes(16)
-  const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY), iv)
+  const key = Buffer.from(ENCRYPTION_KEY!, 'utf8')
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
 
   let encrypted = cipher.update(token, 'utf8', 'hex')
   encrypted += cipher.final('hex')
@@ -19,10 +20,14 @@ export function encryptToken(token: string): string {
 
 export function decryptToken(encrypted: string): string {
   const [ivHex, tagHex, ciphertext] = encrypted.split(':')
+  if (!ivHex || !tagHex || !ciphertext) {
+    throw new Error('Invalid encrypted token format')
+  }
   const iv = Buffer.from(ivHex, 'hex')
   const authTag = Buffer.from(tagHex, 'hex')
+  const key = Buffer.from(ENCRYPTION_KEY!, 'utf8')
 
-  const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY), iv)
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv)
   decipher.setAuthTag(authTag)
 
   let decrypted = decipher.update(ciphertext, 'hex', 'utf8')

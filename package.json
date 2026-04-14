@@ -5,20 +5,21 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "vite dev --port 3000",
-    "build": "vite build",
-    "start": "node dist/server/index.js",
+    "build": "vite build && node scripts/create-server.mjs",
+    "start": "node dist/server/server-node.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
-    "check": "pnpm typecheck",
+    "test": "playwright test",
     "preview": "pnpm build && vite preview",
     "deploy": "pnpm build"
   },
   "dependencies": {
     "@sentry/react": "^8.47.0",
     "@tanstack/react-query": "^5.0.0",
-    "@tanstack/react-router": "^1.132.0",
-    "@tanstack/react-router-devtools": "^1.132.0",
-    "@tanstack/react-start": "^1.132.0",
+    "@tanstack/react-router": "^1.168.21",
+    "@tanstack/react-router-devtools": "^1.166.13",
+    "@tanstack/react-start": "^1.167.39",
+    "arktype": "^2.2.0",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -43,16 +44,18 @@
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/react-query-devtools": "^5.0.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sql.js": "^1.4.11",
     "@typescript-eslint/eslint-plugin": "^8.58.1",
     "@typescript-eslint/parser": "^8.58.1",
-    "@vitejs/plugin-react": "^4.4.1",
+    "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.2.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
-    "vite": "^7.0.0"
+    "vite": "^8.0.8"
   }
 }

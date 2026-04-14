@@ -10,7 +10,7 @@ export default defineConfig(() => ({
       projects: ['./tsconfig.json'],
     }),
     tailwindcss(),
-    tanstackStart({ ssr: false }),
+    tanstackStart({ ssr: true }),
     viteReact(),
   ],
   server: {
